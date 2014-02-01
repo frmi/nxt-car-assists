@@ -1,7 +1,5 @@
-sw502e13
-========
-
 Vehicle Safety and Operational Assistance Systems
+========
 
 
 The purpose of this report was to document the development of a real-time embedded system.
