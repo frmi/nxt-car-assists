@@ -1,0 +1,230 @@
+
+#include "kernel.h"
+#include "kernel_id.h"
+#include <stdio.h>
+#include "ecrobot_interface.h"
+
+/*
+Array specification:
+byte 1: left/right stick
+byte 2: throttle
+byte 3: button A
+byte 4: button B
+byte 5: button X 
+byte 6: button Y
+*/
+
+/* Task Declarations */
+DeclareCounter(SysTimerCnt);
+DeclareTask(InitializeTask);
+DeclareTask(BluetoothTask);
+//DeclareTask(DisplayTask);
+
+/* Definitions */
+#define MOTOR_STEERING     NXT_PORT_A
+#define MOTOR_RIGHT        NXT_PORT_B
+#define MOTOR_LEFT         NXT_PORT_C
+#define STEERING_LIMIT             40 /* degree */
+#define STEERING_P_GAIN             2 /* proportinal gain */
+#define DIFF_GAIN_MAX            0.7F /* 1.0-DIFF_GAIN_MAX: max. differential effect */
+#define NEUTRAL_DEAD_ZONE          30 /* degree */
+#define PWM_OFFSET                 10 /* friction compensator */
+#define EDC_ON                     -1 /* Electronic Differential Control: ON */
+#define EDC_OFF                     1 /* Electronic Differential Control: OFF */
+#define ARRAY_SIZE                 10 /* Size of array retrieved through bluetooth */
+
+/* Global variables */
+static S8 EDC_flag;
+
+/* Prototypes */
+S32 FrictionComp(S32 ratio, S32 offset);
+
+/* nxtOSEK hook to be invoked from an ISR in category 2 */
+void user_1ms_isr_type2(void){ 
+    StatusType ercd;
+
+    ercd = SignalCounter(SysTimerCnt);
+    if(ercd != E_OK){
+        ShutdownOS(ercd);
+    }
+}
+
+/* Initialize bluetooth connection when NXT is started */
+void ecrobot_device_initialize()
+{
+    ecrobot_init_bt_connection();
+}
+
+/* Run when NXT is shut down */
+void ecrobot_device_terminate()
+{
+    nxt_motor_set_speed(MOTOR_STEERING, 0, 1);
+    nxt_motor_set_speed(MOTOR_RIGHT, 0, 1);
+    nxt_motor_set_speed(MOTOR_LEFT, 0, 1);
+    ecrobot_term_bt_connection();
+}
+
+/*--------------------------------------------------------------------------*/
+/* Task information:                                                        */
+/* -----------------                                                        */
+/* Name    : InitializeTask                                                 */
+/* Priority: 3                                                              */
+/* Type    : EXTENDED TASK                                                  */
+/* Schedule: non-preemptive                                                 */
+/*--------------------------------------------------------------------------*/
+TASK(InitializeTask)
+{
+    // nxt_motor_set_speed(PORT, speed, brake / float)
+    nxt_motor_set_speed(MOTOR_STEERING, 0, 1);
+    nxt_motor_set_speed(MOTOR_RIGHT, 0, 1);
+    nxt_motor_set_speed(MOTOR_LEFT, 0, 1);
+
+    // nxt_motor_set_count(PORT, count in degrees)
+    nxt_motor_set_count(MOTOR_STEERING, 0);
+    nxt_motor_set_count(MOTOR_RIGHT, 0);
+    nxt_motor_set_count(MOTOR_LEFT, 0);
+
+    EDC_flag = EDC_OFF;
+
+    TerminateTask();
+}
+
+/*--------------------------------------------------------------------------*/
+/* Task information:                                                        */
+/* -----------------                                                        */
+/* Name    : BluetoothTask                                                  */
+/* Priority: 2                                                              */
+/* Type    : EXTENDED TASK                                                  */
+/* Schedule: non-preemptive                                                 */
+/*--------------------------------------------------------------------------*/
+TASK(BluetoothTask)
+{
+    static U8 bt_receive_buf[ARRAY_SIZE];
+
+    S32 diff_gain;
+    S32 steering_amount;
+    S32 throttle_amount;
+    S32 steering_angle;
+    S32 steering_err;
+    S32 steering_speed;
+
+    U8 edc, breakBtn;
+
+    /* Read data from bluetooth */
+    ecrobot_read_bt_packet(bt_receive_buf, ARRAY_SIZE);
+
+    steering_amount = bt_receive_buf[0];
+    throttle_amount = -bt_receive_buf[1]; /* Invert this number, to go in the right direction*/
+    edc             = bt_receive_buf[2];
+    
+    /* fetch values of button B to Y */
+    breakBtn            = bt_receive_buf[3];
+
+    /* Clear display buffer before filling in new data. 0 = do not update display. */
+    display_clear(0);
+
+    /* Display data from gamepad */
+    display_goto_xy(0,0);
+    display_int(steering_amount, 0);
+    display_goto_xy(0,1);
+    display_int(throttle_amount, 0);
+
+    /* display button states */
+    display_goto_xy(0,2);
+    display_int(breakBtn, 0);
+    display_goto_xy(0,3);
+    display_string("EDC: ");
+
+    /* Toggle EDC with the push of a button */
+    if (edc == 1){
+        EDC_flag = EDC_ON;
+        display_string("ON");
+    } else {
+        EDC_flag = EDC_OFF;
+        display_string("OFF");
+    }
+    
+    /* Update display from buffer */
+    display_update();
+
+    /* steering control */
+    steering_angle = nxt_motor_get_count(MOTOR_STEERING);
+    steering_err = (STEERING_LIMIT*steering_amount)/100 - steering_angle;
+    steering_speed = STEERING_P_GAIN*steering_err;
+    nxt_motor_set_speed(MOTOR_STEERING, FrictionComp(steering_speed,PWM_OFFSET), 1);
+
+    /* Throttle control */
+    diff_gain = 10;
+    if (breakBtn == 0)
+    {
+        if (steering_angle > NEUTRAL_DEAD_ZONE) /* turn right */
+        {
+            if (EDC_flag == EDC_ON)
+            {
+                diff_gain = (S32)((1.0F - (float)steering_angle*DIFF_GAIN_MAX/STEERING_LIMIT)*10);
+            }
+                nxt_motor_set_speed(MOTOR_RIGHT, FrictionComp((throttle_amount*diff_gain)/10,PWM_OFFSET), 0);
+                nxt_motor_set_speed(MOTOR_LEFT, FrictionComp((throttle_amount),PWM_OFFSET), 0);
+        }
+        else if (steering_angle < -NEUTRAL_DEAD_ZONE) /* turn left */
+        {
+            if (EDC_flag == EDC_ON)
+            {
+                diff_gain = (S32)((1.0F + (float)steering_angle*DIFF_GAIN_MAX/STEERING_LIMIT)*10);
+            }
+            nxt_motor_set_speed(MOTOR_RIGHT, FrictionComp(throttle_amount,PWM_OFFSET), 0);
+            nxt_motor_set_speed(MOTOR_LEFT, FrictionComp((throttle_amount*diff_gain)/10,PWM_OFFSET), 0);
+        }
+        else /* go straight */
+        {
+            nxt_motor_set_speed(MOTOR_RIGHT, FrictionComp((throttle_amount),PWM_OFFSET), 0);
+            nxt_motor_set_speed(MOTOR_LEFT, FrictionComp((throttle_amount)*1,PWM_OFFSET), 0);
+        }
+    }
+    else
+    {
+        nxt_motor_set_speed(MOTOR_RIGHT, 0, 1);
+        nxt_motor_set_speed(MOTOR_LEFT, 0, 1);
+    }
+
+    TerminateTask();
+}
+
+
+
+/*--------------------------------------------------------------------------*/
+/* Task information:                                                        */
+/* -----------------                                                        */
+/* Name    : DisplayTask                                                    */
+/* Priority: 1                                                              */
+/* Type    : EXTENDED TASK                                                  */
+/* Schedule: preemptive                                                     */
+/*--------------------------------------------------------------------------*/
+/*
+TASK(DisplayTask)
+{
+    //display_string("AWESOME!");
+    //display_string("HELLO!");
+    //display_update();
+
+    
+
+    TerminateTask();
+}*/
+
+/* Sub functions */
+S32 FrictionComp(S32 ratio, S32 offset)
+{
+    if (ratio > 0)
+    {
+        return ((100-offset)*ratio/100 + offset);
+    }
+    else if (ratio < 0)
+    {
+        return ((100-offset)*ratio/100 - offset);
+    }
+    else
+    {
+        return ratio;
+    }
+}

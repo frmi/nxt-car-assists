@@ -1,0 +1,31 @@
+#include "nxt_interface.h"
+
+<<<<<<< .mine
+#define LEFT_MOTOR          PORT_C
+#define RIGHT_MOTOR         PORT_B
+#define STEERING_MOTOR      PORT_A
+
+=======
+#define LEFT_MOTOR          PORT_C
+#define RIGHT_MOTOR         PORT_B
+#define STEERING_MOTOR      PORT_A
+>>>>>>> .r176
+#define STEERING_LIMIT          40 /* degree */
+#define STEERING_P_GAIN          2 /* proportinal gain */
+
+static S8 steeringAmount = 0;
+static S8 throttleAmount = 0;
+static U8  buttonA = 0;
+static U8  buttonB = 0;
+
+void receiveBT();
+<<<<<<< .mine
+void controlMotors (S8 speed, S32 mode);
+void turn(S8 speed);
+=======
+S32 turn(S8 speed);
+>>>>>>> .r176
+S8 getSteeringAmount();
+S8 getThrottleAmount();
+U8 getButtonA();
+U8 getButtonB();

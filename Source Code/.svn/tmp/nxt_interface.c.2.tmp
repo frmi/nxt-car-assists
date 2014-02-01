@@ -1,0 +1,18 @@
+#include "ecrobot_interface.h"
+#include "nxt_interface.h"
+
+<<<<<<< .mine
+
+=======
+>>>>>>> .r176
+S32 motorGetCount(U8 port){
+    return nxt_motor_get_count(port);
+}
+
+void motorSetSpeed(U8 port, S8 speed, S32 mode){
+    nxt_motor_set_speed(port, speed, mode);
+}
+
+U32 readBtPacket(U8 *buf, U32 bufLen) {
+    return ecrobot_read_bt_packet(buf, bufLen);
+}

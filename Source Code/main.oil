@@ -1,0 +1,250 @@
+#include "implementation.oil"
+
+CPU ATMEL_AT91SAM7S256
+{
+  OS LEJOS_OSEK
+  {
+    STATUS = EXTENDED;
+    STARTUPHOOK = FALSE;
+    ERRORHOOK = FALSE;
+    SHUTDOWNHOOK = FALSE;
+    PRETASKHOOK = FALSE;
+    POSTTASKHOOK = FALSE;
+    USEGETSERVICEID = FALSE;
+    USEPARAMETERACCESS = FALSE;
+    USERESSCHEDULER = FALSE;
+  };
+
+  APPMODE appmode1{}; 
+  
+  TASK InitializeTask
+  {
+    AUTOSTART = TRUE
+    {
+      APPMODE = appmode1;
+    };
+  
+    SCHEDULE = NON; // InitializeTask is not supposed to be pre-empted 
+    PRIORITY = 6; // 0 is lowest 
+    ACTIVATION = 1;
+    STACKSIZE = 512;
+  };
+
+  TASK ControllerTask
+  {
+    AUTOSTART = FALSE;
+    PRIORITY = 4;
+    ACTIVATION = 1;
+    SCHEDULE = FULL;
+    RESOURCE = RES_STEERING_MOTOR;
+    RESOURCE = RES_OVERRIDE_BT;
+    STACKSIZE = 512; // Stack size  
+  };
+  TASK DataLoggingTask
+  {
+    AUTOSTART = FALSE;
+    PRIORITY = 4;
+    ACTIVATION = 1;
+    SCHEDULE = FULL;
+    STACKSIZE = 512; // Stack size  
+  };
+
+  TASK AEBTask
+  {
+    AUTOSTART = FALSE;
+    PRIORITY = 2;
+    ACTIVATION = 1;
+    SCHEDULE = FULL;
+    STACKSIZE = 512; // Stack size  
+  };
+
+ TASK ReadRawDataTask
+  {
+    AUTOSTART = FALSE;
+    PRIORITY = 5; 
+    ACTIVATION = 1;
+    SCHEDULE = NON;
+    STACKSIZE = 512;
+  };
+
+  TASK CalculateVehicleSpeedTask
+  {
+    AUTOSTART = FALSE;
+    PRIORITY = 5; 
+    ACTIVATION = 1;
+    SCHEDULE = NON;
+    STACKSIZE = 512;
+  };
+
+  TASK LaneControlTask
+  {
+    AUTOSTART = FALSE;
+    PRIORITY = 3;
+    ACTIVATION = 1;
+    SCHEDULE = FULL;
+    RESOURCE = RES_STEERING_MOTOR;
+    RESOURCE = RES_OVERRIDE_BT;
+    STACKSIZE = 512; // Stack size  
+  };
+
+  TASK AdaptiveCruiseControlTask
+  {
+    AUTOSTART = FALSE;
+    PRIORITY = 2;
+    ACTIVATION = 1;
+    SCHEDULE = FULL;
+    STACKSIZE = 512; // Stack size  
+  };
+
+  TASK SonarTask
+  {
+    AUTOSTART = FALSE;
+    PRIORITY = 1;
+    ACTIVATION = 1;
+    SCHEDULE = FULL;
+    STACKSIZE = 512; // Stack size  
+  };
+
+  //Definition of OSEK Alarm Counter 
+  COUNTER SysTimerCnt
+  {
+    MINCYCLE = 1;
+    MAXALLOWEDVALUE = 10000;
+    TICKSPERBASE = 1; // One tick is equal to 1msec  
+  };
+
+  ALARM cyclic_alarm_ControllerTask
+  {
+    COUNTER = SysTimerCnt;
+    ACTION = ACTIVATETASK
+    {
+        TASK = ControllerTask;
+    };
+    AUTOSTART = TRUE
+    {
+        ALARMTIME = 1;
+        CYCLETIME = 10; // executed every 10msec 
+        APPMODE = appmode1;
+    };
+  };
+
+  ALARM cyclic_alarm_DataloggingTask
+  {
+    COUNTER = SysTimerCnt;
+    ACTION = ACTIVATETASK
+    {
+        TASK = DataLoggingTask;
+    };
+    AUTOSTART = TRUE
+    {
+        ALARMTIME = 1;
+        CYCLETIME = 10; // executed every 10msec 
+        APPMODE = appmode1;
+    };
+  };
+
+  ALARM cyclic_alarm_AEBTask
+    {
+      COUNTER = SysTimerCnt;
+      ACTION = ACTIVATETASK
+      {
+          TASK = AEBTask;
+      };
+      AUTOSTART = TRUE
+      {
+          ALARMTIME = 1;
+          CYCLETIME = 25; // executed every 25msec 
+          APPMODE = appmode1;
+      };
+    };
+
+  ALARM cyclic_alarm_ReadRawDataTask
+  {
+    COUNTER = SysTimerCnt;
+    ACTION = ACTIVATETASK
+    {
+        TASK = ReadRawDataTask;
+    };
+    AUTOSTART = TRUE
+    {
+        ALARMTIME = 1;
+        CYCLETIME = 5; // executed every 7 msec 
+        APPMODE = appmode1;
+    };
+  };
+
+
+  ALARM cyclic_alarm_CalculateVehicleSpeedTask
+  {
+    COUNTER = SysTimerCnt;
+    ACTION = ACTIVATETASK
+    {
+        TASK = CalculateVehicleSpeedTask;
+    };
+    AUTOSTART = TRUE
+    {
+        ALARMTIME = 1;
+        CYCLETIME = 5; // executed every 50 msec 
+        APPMODE = appmode1;
+    };
+  };
+
+  ALARM cyclic_alarm_LaneControlTask
+  {
+    COUNTER = SysTimerCnt;
+    ACTION = ACTIVATETASK
+    {
+        TASK = LaneControlTask;
+    };
+    AUTOSTART = TRUE
+    {
+        ALARMTIME = 1;
+        CYCLETIME = 20; // executed every 5msec 
+        APPMODE = appmode1;
+    };
+  };
+
+  ALARM cyclic_alarm_AdaptiveCruiseControlTask
+  {
+    COUNTER = SysTimerCnt;
+    ACTION = ACTIVATETASK
+    {
+        TASK = AdaptiveCruiseControlTask;
+    };
+    AUTOSTART = TRUE
+    {
+        ALARMTIME = 1;
+        CYCLETIME = 25; // executed every 25msec 
+        APPMODE = appmode1;
+    };
+  };
+
+  ALARM cyclic_alarm_SonarTask
+  {
+    COUNTER = SysTimerCnt;
+    ACTION = ACTIVATETASK
+    {
+        TASK = SonarTask;
+    };
+    AUTOSTART = TRUE
+    {
+        ALARMTIME = 1;
+        CYCLETIME = 30; // executed every 5msec 
+        APPMODE = appmode1;
+    };
+  };
+
+  /* Definition of resource */
+  RESOURCE RES_STEERING_MOTOR
+  {
+      RESOURCEPROPERTY = STANDARD;
+  };
+
+  /* Definition of resource */
+  RESOURCE RES_OVERRIDE_BT
+  {
+      RESOURCEPROPERTY = STANDARD;
+  };
+
+
+};

@@ -1,0 +1,60 @@
+#include "controller.h"
+
+void receiveBT(){
+    int ARRAY_SIZE = 4;
+    U8 btReceiveBuf[ARRAY_SIZE];
+
+    readBtPacket(btReceiveBuf, ARRAY_SIZE);
+
+    steeringAmount = (S8) btReceiveBuf[0];
+    throttleAmount = (S8) btReceiveBuf[1];
+    buttonA        = btReceiveBuf[2];
+    buttonB        = btReceiveBuf[3];
+}
+
+<<<<<<< .mine
+void controlMotors (S8 speed, S32 mode) {
+    if (speed > 100)
+        appliedPower = 100;
+    else if (speed < -100)
+        appliedPower = -100;
+    else
+        appliedPower = speed;
+
+    appliedMode = mode;
+    motorSetSpeed(LEFT_MOTOR, appliedPower, appliedMode);
+    motorSetSpeed(RIGHT_MOTOR, appliedPower, appliedMode);
+}
+
+void turn(S8 speed){
+=======
+S32 turn(S8 speed){
+>>>>>>> .r176
+    S32 steering_angle;
+    S32 steering_err;
+    S32 steering_speed;
+
+    /* steering control */
+    steering_angle = motorGetCount(STEERING_MOTOR);
+    steering_err = (STEERING_LIMIT*speed)/100 - steering_angle;
+    steering_speed = STEERING_P_GAIN*steering_err;
+    motorSetSpeed(STEERING_MOTOR, steering_speed, 1);
+    S32 oldAngle = steering_angle;
+    return motorGetCount(STEERING_MOTOR) + steering_angle;
+}
+
+S8 getSteeringAmount(){
+    return steeringAmount;
+}
+
+S8 getThrottleAmount(){
+    return throttleAmount;
+}
+
+U8 getButtonA(){
+    return buttonA;
+}
+
+U8 getButtonB(){
+    return buttonB;
+}

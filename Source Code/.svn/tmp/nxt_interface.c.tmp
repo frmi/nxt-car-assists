@@ -1,0 +1,31 @@
+#include "ecrobot_interface.h"
+#include "nxt_interface.h"
+
+#define LEFT_MOTOR PORT_C
+#define RIGHT_MOTOR PORT_B
+
+void setMotorSpeed (S8 speed, S32 mode) {
+	if (speed > 100)
+		appliedPower = 100;
+	else if (speed < -100)
+		appliedPower = -100;
+	else
+		appliedPower = speed;
+
+	appliedMode = mode;
+	nxt_motor_set_speed(LEFT_MOTOR, appliedPower, appliedMode);
+	nxt_motor_set_speed(RIGHT_MOTOR, appliedPower, appliedMode);
+}
+
+U32 read_bt_packet(U8 *buf, U32 bufLen) {
+    return ecrobot_read_bt_packet(buf, bufLen);
+}
+
+void set_motor_speed (U8 port_id, S32 mode, S8 speed) {
+	nxt_motor_set_speed(port_id, mode, speed);
+}
+
+S32 getMotorCount () {
+	//TODO: Get count from both motors?
+	return nxt_motor_get_count(PORT_C);
+}

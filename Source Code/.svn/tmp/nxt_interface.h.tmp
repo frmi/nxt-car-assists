@@ -1,0 +1,29 @@
+#include "mytypes.h"
+#include "speedTask.h"
+
+typedef enum {
+	PORT_A,
+	PORT_B,
+	PORT_C
+}MY_MOTOR_PORT_T;
+
+typedef enum {
+	PORT_1,
+	PORT_2,
+	PORT_3,
+	PORT_4
+}MY_SENSOR_PORT_T;
+
+S8 appliedPower;
+S32 appliedMode;
+
+S32 motorGetCount(U8 port);
+
+void motorSetSpeed(U8 port, S8 speed, S32 mode);
+
+<<<<<<< .mine
+=======
+void motorSetSpeed(U8 port, S8 speed, S32 mode);
+
+>>>>>>> .r176
+U32 readBtPacket(U8 *buf, U32 bufLen);

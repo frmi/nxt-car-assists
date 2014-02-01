@@ -1,0 +1,90 @@
+#include "implementation.oil"
+
+CPU ATMEL_AT91SAM7S256
+{
+  OS LEJOS_OSEK
+  {
+    STATUS = EXTENDED;
+    STARTUPHOOK = FALSE;
+    ERRORHOOK = FALSE;
+    SHUTDOWNHOOK = FALSE;
+    PRETASKHOOK = FALSE;
+    POSTTASKHOOK = FALSE;
+    USEGETSERVICEID = FALSE;
+    USEPARAMETERACCESS = FALSE;
+    USERESSCHEDULER = FALSE;
+  };
+
+	APPMODE appmode1{}; 
+
+    TASK InitializeTask
+  {
+    AUTOSTART = TRUE
+    {
+      APPMODE = appmode1;
+    };
+  
+    SCHEDULE = FULL;
+    PRIORITY = 4; /* 0 is lowest */
+    ACTIVATION = 1;
+    STACKSIZE = 512;
+  };
+
+  TASK BluetoothTask
+  {
+    AUTOSTART = FALSE;
+    PRIORITY = 3;
+    ACTIVATION = 1;
+    SCHEDULE = FULL;
+    STACKSIZE = 512; /* Stack size */ 
+  };
+/*
+	TASK DisplayTask
+	{
+  	AUTOSTART = FALSE;	
+  	SCHEDULE = FULL;
+  	PRIORITY = 1; // 0 is lowest
+  	ACTIVATION = 1;
+  	STACKSIZE = 512;
+	};
+*/
+    /* Definition of OSEK Alarm Counter */
+  COUNTER SysTimerCnt
+  {
+    MINCYCLE = 1;
+    MAXALLOWEDVALUE = 10000;
+    TICKSPERBASE = 1; /* One tick is equal to 1msec */ 
+  };
+
+  ALARM cyclic_alarm_BluetoothTask
+  {
+    COUNTER = SysTimerCnt;
+    ACTION = ACTIVATETASK
+    {
+        TASK = BluetoothTask;
+    };
+    AUTOSTART = TRUE
+    {
+        ALARMTIME = 1;
+        CYCLETIME = 10; /* executed every 10msec */
+        APPMODE = appmode1;
+    };
+  };
+/*
+  ALARM cyclic_alarm_DisplayTask
+  {
+    COUNTER = SysTimerCnt;
+    ACTION = ACTIVATETASK
+    {
+        TASK = DisplayTask;
+    };
+    AUTOSTART = TRUE
+    {
+        ALARMTIME = 1;
+        CYCLETIME = 500; // executed every 500msec
+        APPMODE = appmode1;
+    };
+  };
+*/
+
+};
